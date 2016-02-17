@@ -8,18 +8,16 @@
 
 import UIKit
 
-class BusinessesViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+class BusinessesViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating {
 
     @IBOutlet weak var tableView: UITableView!
+ 
     var businesses: [Business]!
+    var filteredData: [Business]! = []
+    var resultSearchController = UISearchController()
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        tableView.delegate = self
-        tableView.dataSource = self
-        tableView.rowHeight = UITableViewAutomaticDimension
-        tableView.estimatedRowHeight = 120
         
         Business.searchWithTerm("Thai", completion: { (businesses: [Business]!, error: NSError!) -> Void in
             self.businesses = businesses
@@ -30,16 +28,23 @@ class BusinessesViewController: UIViewController, UITableViewDataSource, UITable
             }
         })
 
-/* Example of Yelp search with more search options specified
-        Business.searchWithTerm("Restaurants", sort: .Distance, categories: ["asianfusion", "burgers"], deals: true) { (businesses: [Business]!, error: NSError!) -> Void in
-            self.businesses = businesses
-            
-            for business in businesses {
-                print(business.name!)
-                print(business.address!)
-            }
-        }
-*/
+        tableView.delegate = self
+        tableView.dataSource = self
+        tableView.rowHeight = UITableViewAutomaticDimension
+        tableView.estimatedRowHeight = 120
+        
+        self.filteredData = self.businesses
+        self.resultSearchController = UISearchController(searchResultsController: nil)
+        self.resultSearchController.searchResultsUpdater = self
+        
+        self.resultSearchController.dimsBackgroundDuringPresentation = false
+        self.resultSearchController.searchBar.sizeToFit()
+        
+        navigationItem.titleView = resultSearchController.searchBar
+        resultSearchController.hidesNavigationBarDuringPresentation = false
+        
+        tableView.reloadData()
+
     }
 
     override func didReceiveMemoryWarning() {
@@ -48,17 +53,29 @@ class BusinessesViewController: UIViewController, UITableViewDataSource, UITable
     }
     func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         if businesses != nil {
-            return businesses!.count
-        }else{
+            if resultSearchController.active {
+                return self.filteredData.count
+            } else {
+                return self.businesses!.count
+            }
+        } else {
             return 0
-        }
-    }
+        }    }
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCellWithIdentifier("BusinessCell", forIndexPath: indexPath) as! BusinessCell
         cell.business = businesses[indexPath.row]
         return cell
-    } 
- 
+    }
+    func updateSearchResultsForSearchController(searchController: UISearchController) {
+        if let searchText = searchController.searchBar.text{
+            filteredData = searchText.isEmpty ? businesses : businesses.filter({(dataString: Business)-> Bool in
+                let name = dataString.name! as String
+                return name.rangeOfString(searchText, options: .CaseInsensitiveSearch) != nil
+            })
+            tableView.reloadData()
+    }
+    
+     
     /*
     // MARK: - Navigation
 
@@ -68,5 +85,5 @@ class BusinessesViewController: UIViewController, UITableViewDataSource, UITable
         // Pass the selected object to the new view controller.
     }
     */
-
+}
 }
